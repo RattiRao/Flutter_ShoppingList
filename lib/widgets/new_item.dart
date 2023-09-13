@@ -48,6 +48,7 @@ class _NewItemScreenState extends State<NewItemScreen> {
             children: [
               TextFormField(
                 maxLength: 50,
+                textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   label: Text('Name'),
                 ),

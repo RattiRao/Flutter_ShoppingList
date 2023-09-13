@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shopping_list/data/dummy_items.dart';
 import 'package:shopping_list/models/grocery_item.dart';
 import 'package:shopping_list/widgets/new_item.dart';
 
@@ -11,6 +10,8 @@ class GroceryListScreen extends StatefulWidget {
 }
 
 class _GroceryListScreenState extends State<GroceryListScreen> {
+  final List<GroceryItem> _groceryItems = [];
+
   void onAddButtonPressed() async {
     final newItem = await Navigator.of(context).push(
       MaterialPageRoute(builder: (ctx) {
@@ -22,12 +23,46 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       return;
     }
     setState(() {
-      groceryItems.add(newItem);
+      _groceryItems.add(newItem);
+    });
+  }
+
+  void _removeItem(GroceryItem item) {
+    setState(() {
+      _groceryItems.remove(item);
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    Widget content = const Center(
+      child: Text('No items added yet.'),
+    );
+
+    if (_groceryItems.isNotEmpty) {
+      content = ListView.builder(
+        itemCount: _groceryItems.length,
+        itemBuilder: (context, index) {
+          return Dismissible(
+            key: UniqueKey(),
+            onDismissed: (direction) {
+              _removeItem(_groceryItems[index]);
+            },
+            child: ListTile(
+              title: Text(_groceryItems[index].name),
+              leading: Container(
+                width: 25,
+                height: 25,
+                color: _groceryItems[index].category.color,
+              ),
+              trailing: Text(
+                _groceryItems[index].quantity.toString(),
+              ),
+            ),
+          );
+        },
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your Grocery List'),
@@ -38,22 +73,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
           ),
         ],
       ),
-      body: ListView.builder(
-          itemCount: groceryItems.length,
-          itemBuilder: (context, index) {
-            final grocery = groceryItems[index];
-            return ListTile(
-              title: Text(grocery.name),
-              leading: Container(
-                width: 25,
-                height: 25,
-                color: grocery.category.color,
-              ),
-              trailing: Text(
-                grocery.quantity.toString(),
-              ),
-            );
-          }),
+      body: content,
     );
   }
 }
