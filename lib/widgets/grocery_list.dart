@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:shopping_list/data/categories.dart';
-import 'package:shopping_list/models/category.dart';
 import 'package:shopping_list/models/grocery_item.dart';
 import 'package:shopping_list/widgets/new_item.dart';
 import 'package:http/http.dart' as http;
@@ -16,6 +15,7 @@ class GroceryListScreen extends StatefulWidget {
 
 class _GroceryListScreenState extends State<GroceryListScreen> {
   List<GroceryItem> _groceryItems = [];
+  var _isLoading = true;
 
   void _loadShoppingList() async {
     final url = Uri.https(
@@ -44,6 +44,7 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
 
     setState(() {
       _groceryItems = tempList;
+      _isLoading = false;
     });
   }
 
@@ -54,13 +55,17 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
   }
 
   void onAddButtonPressed() async {
-    await Navigator.of(context).push(
+    final groceryItem = await Navigator.of(context).push(
       MaterialPageRoute(builder: (ctx) {
         return const NewItemScreen();
       }),
     );
 
-    _loadShoppingList();
+    if (groceryItem != null) {
+      setState(() {
+        _groceryItems.add(groceryItem);
+      });
+    }
   }
 
   void _removeItem(GroceryItem item) {
@@ -75,7 +80,11 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       child: Text('No items added yet.'),
     );
 
-    if (_groceryItems.isNotEmpty) {
+    if (_isLoading) {
+      content = const Center(
+        child: CircularProgressIndicator(),
+      );
+    } else if (_groceryItems.isNotEmpty) {
       content = ListView.builder(
         itemCount: _groceryItems.length,
         itemBuilder: (context, index) {
