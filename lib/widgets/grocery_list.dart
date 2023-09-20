@@ -16,6 +16,7 @@ class GroceryListScreen extends StatefulWidget {
 class _GroceryListScreenState extends State<GroceryListScreen> {
   List<GroceryItem> _groceryItems = [];
   var _isLoading = true;
+  var _isDeleting = false;
   String? _errorMsg;
 
   void _loadShoppingList() async {
@@ -28,37 +29,51 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
       'shopping_list.json',
     );
 
-    final response = await http.get(url);
-    //Handle error
-    if (response.statusCode > 400) {
+    try {
+      final response = await http.get(url);
+      //Handle error
+      if (response.statusCode > 400) {
+        setState(() {
+          _isLoading = false;
+          _errorMsg = 'Unable to fetch data. Please try again.';
+          return;
+        });
+      }
+
+      if (response.body == 'null') {
+        setState(() {
+          _isLoading = false;
+        });
+        return;
+      }
+      final Map<String, dynamic> listData = json.decode(response.body);
+      final List<GroceryItem> tempList = [];
+
+      for (final item in listData.entries) {
+        final category = categories.entries
+            .firstWhere(
+                (element) => element.value.title == item.value['category'])
+            .value;
+        final groceryItem = GroceryItem(
+          id: item.key,
+          name: item.value['name'],
+          quantity: item.value['quantity'],
+          category: category,
+        );
+
+        tempList.add(groceryItem);
+      }
+
+      setState(() {
+        _groceryItems = tempList;
+        _isLoading = false;
+      });
+    } catch (error) {
       setState(() {
         _isLoading = false;
-        _errorMsg = 'Unable to fetch data. Please try again.';
-        return;
+        _errorMsg = 'Something went wrong!. Please try again later.';
       });
     }
-    final Map<String, dynamic> listData = json.decode(response.body);
-    final List<GroceryItem> tempList = [];
-
-    for (final item in listData.entries) {
-      final category = categories.entries
-          .firstWhere(
-              (element) => element.value.title == item.value['category'])
-          .value;
-      final groceryItem = GroceryItem(
-        id: item.key,
-        name: item.value['name'],
-        quantity: item.value['quantity'],
-        category: category,
-      );
-
-      tempList.add(groceryItem);
-    }
-
-    setState(() {
-      _groceryItems = tempList;
-      _isLoading = false;
-    });
   }
 
   @override
@@ -81,10 +96,26 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
     }
   }
 
-  void _removeItem(GroceryItem item) {
+  void _removeItem(GroceryItem item) async {
+    final url = Uri.https(
+      'flutter-shopping-bbf7d-default-rtdb.firebaseio.com',
+      'shopping_list/${item.id}.json',
+    );
+    final index = _groceryItems.indexWhere((element) => element.id == item.id);
     setState(() {
       _groceryItems.remove(item);
+      _isDeleting = true;
     });
+
+    final response = await http.delete(url);
+    setState(() {
+      _isDeleting = false;
+    });
+    if (response.statusCode != 200) {
+      setState(() {
+        _groceryItems.insert(index, item);
+      });
+    }
   }
 
   @override
@@ -147,7 +178,15 @@ class _GroceryListScreenState extends State<GroceryListScreen> {
           ),
         ],
       ),
-      body: content,
+      body: Stack(
+        children: [
+          content,
+          if (_isDeleting)
+            const Center(
+              child: CircularProgressIndicator(),
+            )
+        ],
+      ),
     );
   }
 }
